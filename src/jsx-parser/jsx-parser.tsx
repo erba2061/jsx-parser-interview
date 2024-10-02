@@ -18,72 +18,107 @@ const tagReg = /<(\w+)(\/?)>/;
 
 const tagEndReg = /<\/(\w+)(?:\s+)?>/;
 
-enum NodeType {
-  Tag,
-  TagEnd,
-  Text,
+enum TokenType {
+  Tag = "Tag",
+  TagEnd = "TagEnd",
+  Text = "Text",
+  EOF = "EOF",
 }
 
-type TagNode = { node: NodeType.Tag; tag: string; closed: boolean };
+interface Token {
+  token: TokenType;
+}
 
-type TagEndNode = { node: NodeType.TagEnd; tag: string };
+interface TagToken extends Token {
+  token: TokenType.Tag;
+  tag: string;
+  closed: boolean;
+}
 
-type TextNode = { node: NodeType.Text; text: string };
+interface TagEndToken extends Token {
+  token: TokenType.TagEnd;
+  tag: string;
+}
 
-function newParser(value: string) {
+interface TextToken extends Token {
+  token: TokenType.Text;
+  text: string;
+}
+
+interface EOFToken extends Token {
+  token: TokenType.EOF;
+}
+
+const tag = (tag: string, closed: boolean) => ({
+  token: TokenType.Tag,
+  tag,
+  closed,
+});
+const tagEnd = (tag: string) => ({ token: TokenType.TagEnd, tag });
+const text = (text: string) => ({ token: TokenType.Text, text });
+const EOF = () => ({ token: TokenType.EOF });
+
+// function token() {
+//   let nextCh = peek();
+
+//   if (nextCh === "<") {
+//     const tagM = peekSlice().match(tagReg);
+//     if (tagM) {
+//       return { node: TokenType.Tag, tag: tagM[1], closed: !!tagM[2] };
+//     }
+//     const tagEndM = value.slice(pos).match(tagEndReg);
+//     if (tagEndM) {
+//       return { node: TokenType.TagEnd, tag: tagEndM[1] };
+//     }
+//     return { node: TokenType.Text, text: nextCh };
+//   }
+
+//   let text = nextCh;
+//   while (nextCh !== "<") {
+//     text = text + nextCh;
+//     nextCh = peek();
+//   }
+//   return { node: TokenType.Text, text: text.trim() };
+// }
+function newParser(value: Token[]) {
   let pos = 0;
 
   function peek() {
     return value[pos + 1];
   }
 
-  function peekSlice() {
-    return value.slice(pos);
+  function eat(tokenType: TokenType) {
+    const token = value[pos];
+    if (token.token !== tokenType)
+      throw new Error(`expected token ${tokenType}, got ${value[pos].token}`);
+    pos += 1;
+    return token;
   }
 
-  function digest(part: string) {
-    if (value.slice(pos, part.length) !== part)
-      throw new Error(`digest issue ${part}`);
-    pos += part.length;
+  function componentNode() {
+    const tag = eat(TokenType.Tag);
+
+    let { token } = peek();
+
+    let children: ReactNode[] = [];
+    if (token === TokenType.Tag || token === TokenType.Text) {
+      children = listNode();
+    }
+
+    eat(TokenType.TagEnd);
+
+    return createElement(symbolStore[tag.tag], {}, ...children);
   }
 
-  function skipWhitespace() {
-    let maybe = peek();
-    while (maybe === " " || maybe === "\n") {
-      digest(maybe);
-      maybe = peek();
+  function itemNode() {
+    let item = peek();
+    if (item.token === TokenType.Text) {
+      console.log(item);
+      eat(TokenType.Text);
+      return item.text;
     }
+    return componentNode();
   }
-
-  function singularNode(): TagNode | TagEndNode | TextNode {
-    const nextCh = peek();
-
-    if (nextCh === '<') {
-      const match = peekSlice().match(tagReg);
-      if (match) {
-      digest(match[0]);
-      return { node: NodeType.Tag, tag: match[1], closed: !!match[2] };
-    }
-    }
-    if (node === NodeType.TagEnd) {
-      const match = value.slice(pos).match(tagEndReg);
-      if (!match) throw new Error(`expected tagEnd, got ${peek()}`);
-      digest(match[0]);
-      return { node: NodeType.TagEnd, tag: match[1] };
-    }
-    if (node === NodeType.Text) {
-      let char = peek();
-      let text = "";
-      while (!["<"].includes(char)) {
-        text = text + char;
-        digest(char);
-        char = peek();
-        if (char)
-      }
-    }
-  }
-
-  function itemNode() {}
 
   function listNode() {
     const store: ReactNode[] = [];
@@ -96,11 +131,15 @@ function newParser(value: string) {
   }
 
   function parse() {
-    const list: ReactNode = [];
     return listNode();
   }
+  return { parse };
 }
 
 export const JSXParser = ({ value }: JSXParserProps) => {
-  return createElement("pre", {}, value);
+  return newParser([
+    tag("AppContent", false),
+    text("Hello"),
+    tagEnd("AppContent"),
+  ]).parse();
 };
