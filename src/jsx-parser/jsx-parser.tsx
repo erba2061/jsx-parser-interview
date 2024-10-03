@@ -1,4 +1,4 @@
-import { ReactNode, createElement } from "react";
+import { Fragment, ReactNode, createElement } from "react";
 import { AppShell, AppMenu, MenuItem, AppContent } from "./symbols";
 
 const symbolStore = {
@@ -58,39 +58,17 @@ const tagEnd = (tag: string) => ({ token: TokenType.TagEnd, tag });
 const text = (text: string) => ({ token: TokenType.Text, text });
 const EOF = () => ({ token: TokenType.EOF });
 
-// function token() {
-//   let nextCh = peek();
-
-//   if (nextCh === "<") {
-//     const tagM = peekSlice().match(tagReg);
-//     if (tagM) {
-//       return { node: TokenType.Tag, tag: tagM[1], closed: !!tagM[2] };
-//     }
-//     const tagEndM = value.slice(pos).match(tagEndReg);
-//     if (tagEndM) {
-//       return { node: TokenType.TagEnd, tag: tagEndM[1] };
-//     }
-//     return { node: TokenType.Text, text: nextCh };
-//   }
-
-//   let text = nextCh;
-//   while (nextCh !== "<") {
-//     text = text + nextCh;
-//     nextCh = peek();
-//   }
-//   return { node: TokenType.Text, text: text.trim() };
-// }
 function newParser(value: Token[]) {
   let pos = 0;
 
-  function peek() {
-    return value[pos + 1];
+  function curr() {
+    return value[pos];
   }
 
   function eat(tokenType: TokenType) {
     const token = value[pos];
     if (token.token !== tokenType)
-      throw new Error(`expected token ${tokenType}, got ${value[pos].token}`);
+      throw new Error(`expected token ${tokenType}, got ${token.token}`);
     pos += 1;
     return token;
   }
@@ -98,34 +76,35 @@ function newParser(value: Token[]) {
   function componentNode() {
     const tag = eat(TokenType.Tag);
 
-    let { token } = peek();
+    if (!tag.closed) {
+      const children = listNode();
 
-    let children: ReactNode[] = [];
-    if (token === TokenType.Tag || token === TokenType.Text) {
-      children = listNode();
+      eat(TokenType.TagEnd);
+
+      return createElement(symbolStore[tag.tag], {}, ...children);
     }
 
-    eat(TokenType.TagEnd);
-
-    return createElement(symbolStore[tag.tag], {}, ...children);
-  }
-
-  function itemNode() {
-    let item = peek();
-    if (item.token === TokenType.Text) {
-      console.log(item);
-      eat(TokenType.Text);
-      return item.text;
-    }
-    return componentNode();
+    return createElement(symbolStore[tag.tag], {});
   }
 
   function listNode() {
     const store: ReactNode[] = [];
-    let node = itemNode();
-    while (node) {
-      store.push(node);
-      node = itemNode();
+    while (curr()) {
+      const currToken = curr();
+      if (currToken.token === TokenType.Text) {
+        eat(TokenType.Text);
+        store.push(currToken.text);
+      }
+      if (currToken.token === TokenType.Tag) {
+        store.push(componentNode());
+      }
+      if (currToken.token === TokenType.EOF) {
+        eat(TokenType.EOF);
+        return store;
+      }
+      if (currToken.token === TokenType.TagEnd) {
+        return store;
+      }
     }
     return store;
   }
@@ -137,9 +116,15 @@ function newParser(value: Token[]) {
 }
 
 export const JSXParser = ({ value }: JSXParserProps) => {
-  return newParser([
+  const parser = newParser([
+    tag("AppContent", false),
+    tag("AppMenu", true),
+    text("Hello"),
     tag("AppContent", false),
     text("Hello"),
     tagEnd("AppContent"),
-  ]).parse();
+    tagEnd("AppContent"),
+    EOF(),
+  ]);
+  return createElement(Fragment, {}, ...parser.parse());
 };
