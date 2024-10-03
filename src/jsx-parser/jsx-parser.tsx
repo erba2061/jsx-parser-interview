@@ -14,10 +14,6 @@ interface JSXParserProps {
   value: string;
 }
 
-const tagReg = /<(\w+)(\/?)>/;
-
-const tagEndReg = /<\/(\w+)(?:\s+)?>/;
-
 enum TokenType {
   Tag = "Tag",
   TagEnd = "TagEnd",
