@@ -115,6 +115,24 @@ function newParser(value: Token[]) {
   return { parse };
 }
 
+function newLexer(value: string) {
+  let pos = 0;
+
+  function peek() {
+    return value[pos + 1];
+  }
+
+  function curr() {
+    return value[pos];
+  }
+
+  function digest() {}
+
+  function parse() {}
+
+  return { parse };
+}
+
 export const JSXParser = ({ value }: JSXParserProps) => {
   const parser = newParser([
     tag("AppContent", false),
