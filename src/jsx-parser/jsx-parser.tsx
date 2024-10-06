@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { Fragment, ReactNode, createElement, memo } from "react";
 import { AppShell, AppMenu, MenuItem, AppContent } from "./symbols";
 
 const symbolStore = {
@@ -8,92 +8,99 @@ const symbolStore = {
   AppContent,
 };
 
-console.log(symbolStore);
-
 interface JSXParserProps {
   value: string;
 }
 
-type Token =
-  | { token: "tag"; single: boolean; end: boolean; name: string }
-  | { token: "text"; content: string };
+type Frag = { name: string; data: (Frag | string)[]; parent: Frag | null };
+const newFragment = (name: string): Frag => {
+  return { name, data: [], parent: null };
+};
 
-const newTextToken = (content: string) => ({ token: "text", content });
-const newTagToken = () => ({
-  token: "tag",
-  single: false,
+type Token = { text: string; tag: boolean; end: boolean; selfend: boolean };
+const newToken = (): Token => ({
+  text: "",
+  tag: false,
   end: false,
-  name: "",
+  selfend: false,
 });
 
-let alphanumeric = /[a-zA-Z0-9]/;
-
-const newScope = (scope) => {
-  return { scope, data: [], parent: null };
-};
-export const parseTokens = (value: string): string[] => {
-  const root = newScope("global");
+export const parse = (value: string): Frag[] | string => {
+  const root = newFragment("fragment");
   const stack = [root];
 
-  let curr: any = { text: "" };
+  let nextToken = newToken();
 
   for (let pos = 0; pos < value.length; pos += 1) {
     const char = value[pos];
-    const parent = stack.at(-1);
-    const tokens = parent.data;
+    const parent = stack[stack.length - 1];
 
-    if (char === "/") {
-      if (curr.tag) {
-        if (curr.text.length) {
-          curr.selfend = true;
+    if (char === ">") {
+      if (nextToken.tag) {
+        const name = nextToken.text.split(/\s/)[0];
+        if (nextToken.end) {
+          if (parent.name !== name) return value;
+          stack.pop();
+          nextToken = newToken();
+        } else if (nextToken.selfend) {
+          const fragment = newFragment(name);
+          parent.data.push(fragment);
+          nextToken = newToken();
         } else {
-          curr.end = true;
+          const fragment = newFragment(name);
+          parent.data.push(fragment);
+          stack.push(fragment);
+          nextToken = newToken();
         }
-      } else {
-        curr.text = curr.text + char;
       }
       continue;
     }
 
-    if (char === ">") {
-      if (curr.tag) {
-        if (curr.end) {
-          stack.pop();
-          curr = { text: "" };
-        } else if (curr.selfend) {
-          tokens.push(curr);
-          curr = { text: "" };
+    if (char === "/") {
+      if (nextToken.tag) {
+        if (nextToken.text.length) {
+          nextToken.selfend = true;
         } else {
-          const scope = {
-            parent,
-            scope: curr.text.split(/\s/)[0],
-            data: [],
-          };
-          parent.data.push(scope);
-          stack.push(scope);
-          curr = { text: "" };
+          nextToken.end = true;
         }
+      } else {
+        nextToken.text = nextToken.text + char;
       }
       continue;
     }
 
     if (char === "<") {
-      if (curr.text) tokens.push(curr);
-      curr = { text: "", tag: true };
+      nextToken.text = nextToken.text.trim();
+      if (nextToken.text) parent.data.push(nextToken.text);
+
+      nextToken = newToken();
+      nextToken.tag = true;
       continue;
     }
 
-    if (char === " ") {
-      if (!curr.text) continue;
-    }
-
-    curr.text = curr.text + char;
+    nextToken.text = nextToken.text + char;
   }
 
-  return root;
+  return root.data;
 };
 
-export const JSXParser = ({ value }: JSXParserProps) => {
-  console.log(parseTokens(value));
-  return createElement("pre", {}, value);
+const children = (list: (Frag | string)[]): ReactNode[] => {
+  return list.map((item) => {
+    if (typeof item === "string") {
+      return item;
+    }
+    return createElement(
+      symbolStore[item.name as keyof typeof symbolStore],
+      {},
+      ...children(item.data)
+    );
+  });
 };
+
+export const JSXParser = memo(({ value }: JSXParserProps) => {
+  const root = parse(value);
+
+  if (typeof root === "string") return root;
+
+  return createElement(Fragment, {}, ...children(root));
+});
