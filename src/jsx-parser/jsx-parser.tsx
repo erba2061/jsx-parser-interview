@@ -28,11 +28,11 @@ const newTagToken = () => ({
 
 let alphanumeric = /[a-zA-Z0-9]/;
 
-const newScope = () => {
-  return { scope, children: [], parent: null };
+const newScope = (scope) => {
+  return { scope, data: [], parent: null };
 };
 export const parseTokens = (value: string): string[] => {
-  const root = { scope: "global", data: [] };
+  const root = newScope("global");
   const stack = [root];
 
   let curr: any = { text: "" };
@@ -64,15 +64,13 @@ export const parseTokens = (value: string): string[] => {
           tokens.push(curr);
           curr = { text: "" };
         } else {
-          tokens.push(curr);
-          parent;
           const scope = {
-            parent: tokens,
+            parent,
             scope: curr.text.split(/\s/)[0],
             data: [],
           };
-          parent.children;
-          stack.push({});
+          parent.data.push(scope);
+          stack.push(scope);
           curr = { text: "" };
         }
       }
