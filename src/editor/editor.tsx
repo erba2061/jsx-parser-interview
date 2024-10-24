@@ -13,7 +13,7 @@ export type TemplateKey = keyof typeof TEMPLATES;
 
 export const templateKeys = Object.keys(TEMPLATES) as TemplateKey[];
 
-const templateDefaultKey: TemplateKey = "textNode";
+const templateDefaultKey: TemplateKey = "jsxNodeTree";
 
 const StrContext = createContext([
   "",
