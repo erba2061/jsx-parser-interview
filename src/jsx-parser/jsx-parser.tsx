@@ -108,7 +108,6 @@ function newLexer(value: string) {
     }
 
     if (!alphanumeric.test(curr())) {
-      console.log("didnot pass stupid test");
       pos = resetPos;
       return;
     }
@@ -116,7 +115,6 @@ function newLexer(value: string) {
     let tagfilled = false;
     while (curr() && curr() !== "/" && curr() !== ">") {
       const peeked = curr();
-      console.log("peeked", peeked);
       if (!tagfilled && alphanumeric.test(peeked)) {
         tag = tag + peeked;
         pos += 1;
@@ -132,8 +130,6 @@ function newLexer(value: string) {
     }
 
     if (curr() !== ">") {
-      console.log("> issue", curr());
-      // throw new Error(`missing tag end, got ${curr()}`);
       pos = resetPos;
       return;
     }
