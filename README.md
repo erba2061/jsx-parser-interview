@@ -1,8 +1,21 @@
-# React + Tailwind
+# Basic JSX parser
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules. One top of the standard Vite setup, [tailwindcss](https://tailwindcss.com/) is installed and ready to be used in React components.
+- Task
 
-Additional references:
-* [Getting started with Vite](https://vitejs.dev/guide/)
-* [Tailwind documentation](https://tailwindcss.com/docs/installation)
+  - Implement a module that takes a string of React nodes in JSX format, parses and renders it on the screen.
 
+  - Your main concern is [jsx-parser](./src/jsx-parser/jsx-parser.tsx) module. You can edit, create, delete code as you like there.
+
+- Requirements
+
+  - Support text nodes
+
+  - Support components found at [jsx-parser/symbols](./src/jsx-parser/symbols.tsx)
+
+- Rules
+
+  - Use everything you use on your daily work
+
+  - Questions are allowed and encouraged
+
+  - Loud thinking is allowed and encouraged
